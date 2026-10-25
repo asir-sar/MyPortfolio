@@ -298,48 +298,50 @@
     logTerminal(`Session cleared. Vault locked under Zero-Trust protocol.`, 'normal');
   }
 
-  // Dynamic Demo Pills Renderer
-  function updateDemoPills() {
+  // Dynamic Demo Pills Binder
+  function setupDemoPills() {
     const pillsContainer = document.querySelector('.demo-pills');
     if (!pillsContainer) return;
 
-    let companySlots = [];
+    // 1. Attach click listener to all existing static demo pills
+    const staticBtns = pillsContainer.querySelectorAll('.demo-pill-btn');
+    staticBtns.forEach(btn => {
+      btn.onclick = () => {
+        const code = btn.getAttribute('data-code') || btn.textContent.trim();
+        if (dom.input) {
+          dom.input.value = code;
+          authenticateCode(code);
+        }
+      };
+    });
+
+    // 2. Check for extra custom slots in localStorage and append if not already present
     try {
       const stored = localStorage.getItem('PORTFOLIO_COMPANY_SLOTS');
-      if (stored) companySlots = JSON.parse(stored);
-    } catch (e) {}
-
-    if (!Array.isArray(companySlots) || companySlots.length === 0) {
-      if (window.SECURE_VAULT_PAYLOAD && window.SECURE_VAULT_PAYLOAD.slots) {
-        companySlots = Object.values(window.SECURE_VAULT_PAYLOAD.slots).map(s => ({
-          name: s.companyName,
-          code: s.companyName.split(' ')[0].toUpperCase()
-        }));
-      }
-    }
-
-    if (Array.isArray(companySlots) && companySlots.length > 0) {
-      pillsContainer.innerHTML = '';
-      // Take up to 8 distinct codes
-      const uniqueCodes = [];
-      for (const slot of companySlots) {
-        if (!uniqueCodes.includes(slot.code) && uniqueCodes.length < 8) {
-          uniqueCodes.push(slot.code);
-          const btn = document.createElement('button');
-          btn.type = 'button';
-          btn.className = 'demo-pill-btn';
-          btn.setAttribute('data-code', slot.code);
-          btn.textContent = slot.code;
-          btn.addEventListener('click', () => {
-            if (dom.input) {
-              dom.input.value = slot.code;
-              authenticateCode(slot.code);
+      if (stored) {
+        const customSlots = JSON.parse(stored);
+        if (Array.isArray(customSlots)) {
+          const existingCodes = Array.from(staticBtns).map(b => (b.getAttribute('data-code') || b.textContent.trim()).toUpperCase());
+          for (const slot of customSlots) {
+            if (slot.code && !existingCodes.includes(slot.code.toUpperCase())) {
+              existingCodes.push(slot.code.toUpperCase());
+              const newBtn = document.createElement('button');
+              newBtn.type = 'button';
+              newBtn.className = 'demo-pill-btn';
+              newBtn.setAttribute('data-code', slot.code);
+              newBtn.textContent = slot.code;
+              newBtn.onclick = () => {
+                if (dom.input) {
+                  dom.input.value = slot.code;
+                  authenticateCode(slot.code);
+                }
+              };
+              pillsContainer.appendChild(newBtn);
             }
-          });
-          pillsContainer.appendChild(btn);
+          }
         }
       }
-    }
+    } catch (e) {}
   }
 
   // Ensure Payload Is Initialized
@@ -352,7 +354,7 @@
         if (parsed && parsed.ciphertext && parsed.slots) {
           window.SECURE_VAULT_PAYLOAD = parsed;
           logTerminal(`[SYNC] Loaded ${Object.keys(parsed.slots).length} active keys from local vault.`, 'success');
-          updateDemoPills();
+          setupDemoPills();
           return;
         }
       }
@@ -362,7 +364,9 @@
 
     // 2. Check if window.SECURE_VAULT_PAYLOAD already defined (e.g. from payload.js)
     if (window.SECURE_VAULT_PAYLOAD && window.SECURE_VAULT_PAYLOAD.ciphertext) {
-      updateDemoPills();
+      const slotCount = window.SECURE_VAULT_PAYLOAD.slots ? Object.keys(window.SECURE_VAULT_PAYLOAD.slots).length : 0;
+      logTerminal(`[PAYLOAD] Loaded ${slotCount} encrypted key slots from vault manifest.`, 'normal');
+      setupDemoPills();
       return;
     }
 
@@ -442,7 +446,7 @@
         };
 
         logTerminal(`[VAULT READY] Ciphertext sealed. Zero-Trust perimeter armed.`, 'success');
-        updateDemoPills();
+        setupDemoPills();
       } catch (e) {
         console.error("Payload initialization error:", e);
       }

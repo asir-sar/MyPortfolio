@@ -95,7 +95,7 @@ myPortfolio/
     │   ├── auth.js         # Web Crypto AES-256-GCM + PBKDF2 Engine
     │   └── main.js         # Typewriter, Project Filter, Modal & HUD Controller
     └── img/
-        ├── Img.jpg          # Professional headshot (Sarwari A. Basit)
+        ├── Img.png          # Professional headshot (Sarwari A. Basit)
         └── hero-bg.jpeg     # Backdrop image
 ```
 
